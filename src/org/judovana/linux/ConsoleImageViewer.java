@@ -30,7 +30,17 @@ import java.io.IOException;
  */
 public final class ConsoleImageViewer {
 
-    private static void printHelp() {
+    private static boolean ratio;
+    private static boolean rect;
+    private static boolean bg;
+    private static boolean fg;
+    private static boolean noChar;
+    private static boolean negChar;
+    private static boolean negCol;
+    private static int w;
+    private static int h;
+
+    public static void printHelp() {
         System.out.println("Utility to render  images to console");
         System.out.println("to work best use 'export COLUMNS LINES' otherwise standard terminal of 80x25 will be used ");
         System.out.println("-h --help - print help and exits");
@@ -41,7 +51,7 @@ public final class ConsoleImageViewer {
         System.out.println("-bg - use linux ansi escape color for background");
         System.out.println("-nochar - disable shadowing by characters");
         System.out.println("-ratio - forece to keep image ratio");
-        System.out.println("-rect - will force rendering assuming that console char is not square, but rectangle of 2w~=3h");
+        System.out.println("-rect - will force rendering assuming that console char is not square, but rectangle of 2w~=h");
         System.out.println("-negChar - invert chars");
         System.out.println("-negColor - invert colors");
         System.out.println("-wX- force width");
@@ -57,7 +67,7 @@ public final class ConsoleImageViewer {
         throw new RuntimeException("No file found!");
     }
 
-    private static boolean haveParam(String param, String[] args) {
+    public static boolean haveParam(String param, String[] args) {
         return haveParam(param, args, false);
 
     }
@@ -86,6 +96,56 @@ public final class ConsoleImageViewer {
         return i;
     }
 
+    public static void setParams(String[] args) {
+        ratio = haveParam("ratio", args);
+        rect = haveParam("rect", args);
+        bg = haveParam("bg", args);
+        fg = haveParam("fg", args);
+        noChar = haveParam("nochar", args);
+        negChar = haveParam("negChar", args);
+        negCol = haveParam("negColor", args);
+        if (haveParam("best", args) || haveParam("bestnchar", args)) {
+            ratio = true;
+            rect = true;
+            bg = true;
+            fg = false;
+            if (haveParam("best", args)) {
+                noChar = false;
+            }
+            if (haveParam("bestnchar", args)) {
+                noChar = true;
+            }
+            negChar = true;
+            negCol = false;
+        }
+        w = getParam("w", args, 80);
+        h = getParam("h", args, 25);
+    }
+
+    public static void doJob(BufferedImage image) {
+        //use exported! export COLUMNS LINES to find size
+//force ratio? think about char in consoel is not square, but rectangle 2w=h
+        String systemWidth = System.getenv("COLUMNS");
+        String systemHeight = System.getenv("LINES");
+        if (systemWidth != null && w == 80) {
+            w = Integer.valueOf(systemWidth);
+        } else {
+            if (w == 80) {
+                System.err.println("Warning COLUMNS varibale not exported nor -w specified! Standart " + w + " used");
+            }
+        }
+        if (systemHeight != null && h == 25) {
+            h = Integer.valueOf(systemHeight);
+        } else {
+            if (h == 25) {
+                System.err.println("Warning LINES varibale not exported nor -h specified! Standart " + h + " used");
+            }
+        }
+        String ascii = doAll(rect, image, w, h, ratio, fg, bg, noChar, negChar, negCol);
+        System.out.print(ascii);
+        System.out.println();
+    }
+
     boolean negative;
 
     public static String convert(final BufferedImage image, boolean fg, boolean bg, boolean drawChar, boolean negChar, boolean negColor) {
@@ -99,10 +159,7 @@ public final class ConsoleImageViewer {
         }
         StringBuilder sb = new StringBuilder(imgSize + imgSize * colorSize);
         for (int y = 0; y < image.getHeight(); y++) {
-            if (fg || bg) {
-                sb.append(ansiColorToEscapedString(15, true));
-                sb.append(ansiColorToEscapedString(0, false));
-            }
+            reset(fg, sb, bg);
             if (sb.length() != 0) {
                 sb.append("\n");
             }
@@ -127,7 +184,17 @@ public final class ConsoleImageViewer {
                 //best is with char, and bg only
             }
         }
+        reset(fg, sb, bg);
         return sb.toString();
+    }
+
+    private static void reset(boolean fg1, StringBuilder sb, boolean bg1) {
+        if (fg1) {
+            sb.append(ansiColorToEscapedString(15, true));
+        }
+        if (bg1) {
+            sb.append(ansiColorToEscapedString(0, false));
+        }
     }
 
     private static String ansiColorToEscapedString(int ansi, boolean fg) {
@@ -229,7 +296,7 @@ public final class ConsoleImageViewer {
 
     }
 
-    public static BufferedImage resize(BufferedImage img, int newW, int newH, boolean ratio) {
+    private static BufferedImage resize(BufferedImage img, int newW, int newH, boolean ratio) {
         if (ratio) {
             double wR = (double) newW / (double) img.getWidth();
             double hR = (double) newH / (double) img.getHeight();
@@ -256,60 +323,18 @@ public final class ConsoleImageViewer {
         }
     }
 
-    public static void tui(String[] args) throws IOException {
+    private static void tui(String[] args) throws IOException {
         if (haveParam("help", args) || haveParam("h", args)) {
             printHelp();
             System.exit(0);
         }
-        boolean ratio = haveParam("ratio", args);
-        boolean rect = haveParam("rect", args);
-        boolean bg = haveParam("bg", args);
-        boolean fg = haveParam("fg", args);
-        boolean noChar = haveParam("nochar", args);
-        boolean negChar = haveParam("negChar", args);
-        boolean negCol = haveParam("negColor", args);
-        if (haveParam("best", args) || haveParam("bestnchar", args)) {
-            ratio = true;
-            rect = true;
-            bg = true;
-            fg = false;
-            if (haveParam("best", args)) {
-                noChar = false;
-            }
-            if (haveParam("bestnchar", args)) {
-                noChar = true;
-            }
-            negChar = true;
-            negCol = false;
-        }
+        setParams(args);
         File f = new File(getFile(args));
         BufferedImage image = ImageIO.read(f);
         if (image == null) {
             throw new IllegalArgumentException(f + " is not a valid image.");
         }
-//use exported! export COLUMNS LINES to find size
-//force ratio? think about char in consoel is not square, but rectangle 2w=h
-        String systemWidth = System.getenv("COLUMNS");
-        String systemHeight = System.getenv("LINES");
-        int w = getParam("w", args, 80);
-        int h = getParam("h", args, 25);
-        if (systemWidth != null && w == 80) {
-            w = Integer.valueOf(systemWidth);
-        } else {
-            if (w == 80) {
-                System.err.println("Warning COLUMNS varibale not exported nor -w specified! Standart " + w + " used");
-            }
-        }
-        if (systemHeight != null && h == 25) {
-            h = Integer.valueOf(systemHeight);
-        } else {
-            if (h == 25) {
-                System.err.println("Warning LINES varibale not exported nor -h specified! Standart " + h + " used");
-            }
-        }
-        String ascii = doAll(rect, image, w, h, ratio, fg, bg, noChar, negChar, negCol);
-        System.out.print(ascii);
-        System.out.println();
+        doJob(image);
 
     }
 
@@ -329,5 +354,16 @@ public final class ConsoleImageViewer {
         final String ascii = convert(image, fg, bg, !noChar, negChar, negCol);
         return ascii;
     }
+
+    public static int getW() {
+        return w;
+    }
+
+    public static int getH() {
+        return h;
+    }
+    
+    
+    
 
 }
