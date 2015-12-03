@@ -12,9 +12,9 @@ import java.io.IOException;
  However modified to much.
  Intetnionaly one static class.
 
- Copyright (c) 2011 Aravind Rao
-
+ Modifications by Jiri Vanek, coloring, stretching, applicalization
  Modifications by Sam Barnum, 360Works 2012
+ original Copyright (c) 2011 Aravind Rao
 
  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without restriction, including without limitation the rights to
@@ -39,32 +39,56 @@ public final class ConsoleImageViewer {
     private static boolean negCol;
     private static int w;
     private static int h;
+    private static boolean names;
 
     public static void printHelp() {
         System.out.println("Utility to render  images to console");
         System.out.println("to work best use 'export COLUMNS LINES' otherwise standard terminal of 80x25 will be used ");
         System.out.println("-h --help - print help and exits");
-        System.out.println("Necessary parameter is any <FILE-NAME> follwoing optional switches:");
+        System.out.println("Necessary parameter is any <FILE-NAME> follwoing optional switches (1-n FILES supported):");
         System.out.println("-best - overwrite everything and set best settngs");
         System.out.println("-bestnchar - same but sets nochar to true");
         System.out.println("-fg - use linux ansi escape color for character");
         System.out.println("-bg - use linux ansi escape color for background");
         System.out.println("-nochar - disable shadowing by characters");
+        System.out.println("-names - prints out image name before drawing it");
         System.out.println("-ratio - forece to keep image ratio");
         System.out.println("-rect - will force rendering assuming that console char is not square, but rectangle of 2w~=h");
         System.out.println("-negChar - invert chars");
         System.out.println("-negColor - invert colors");
-        System.out.println("-wX- force width");
-        System.out.println("-hX- force height");
+        System.out.println("-wX - force width");
+        System.out.println("-hX - force height");
     }
 
-    private static String getFile(String[] args) {
+    private static boolean haveArg(String[] args) {
+        int items = 0;
         for (String arg : args) {
-            if (!arg.startsWith("-")) {
-                return arg;
+            if (arg.startsWith("-")) {
+                return true;
             }
         }
-        throw new RuntimeException("No file found!");
+        return false;
+    }
+
+    private static String[] getFiles(String[] args) {
+        int items = 0;
+        for (String arg : args) {
+            if (!arg.startsWith("-")) {
+                items++;
+            }
+        }
+        if (items == 0) {
+            throw new RuntimeException("No file found!");
+        }
+        String[] r = new String[items];
+        int counter = 0;
+        for (String arg : args) {
+            if (!arg.startsWith("-")) {
+                r[counter] = arg;
+                counter++;
+            }
+        }
+        return r;
     }
 
     public static boolean haveParam(String param, String[] args) {
@@ -120,6 +144,7 @@ public final class ConsoleImageViewer {
         }
         w = getParam("w", args, 80);
         h = getParam("h", args, 25);
+        names = haveParam("names", args);
     }
 
     public static void doJob(BufferedImage image) {
@@ -328,13 +353,32 @@ public final class ConsoleImageViewer {
             printHelp();
             System.exit(0);
         }
-        setParams(args);
-        File f = new File(getFile(args));
-        BufferedImage image = ImageIO.read(f);
-        if (image == null) {
-            throw new IllegalArgumentException(f + " is not a valid image.");
+        if (!haveArg(args)) {
+            String[] oldArgs = args;
+            args = new String[oldArgs.length + 1];
+            args[0] = "-best";
+            for (int i = 0; i < oldArgs.length; i++) {
+                String arg = oldArgs[i];
+                args[i + 1] = arg;
+            }
+
         }
-        doJob(image);
+        setParams(args);
+        String[] s = getFiles(args);
+        for (String s1 : s) {
+            try {
+                BufferedImage image = ImageIO.read(new File(s1));
+                if (image == null) {
+                    throw new IllegalArgumentException(s1 + " is not a valid image.");
+                }
+                if (names) {
+                    System.out.println(s1);
+                }
+                doJob(image);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        }
 
     }
 
@@ -362,8 +406,5 @@ public final class ConsoleImageViewer {
     public static int getH() {
         return h;
     }
-    
-    
-    
 
 }
