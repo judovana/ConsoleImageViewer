@@ -1,0 +1,78 @@
+.TH consoleImageViewer 1  "December 04, 2015" "version 1.2" "USER COMMANDS"
+.SH NAME
+consoleImageViewer \- highly scale-able, high quality, image viewer for ANSI terminals
+.SH SYNOPSIS
+.B consoleImageViewer
+[\-h][\--help][\-best][\-fg][\-bg][\-nochar][\-names][\-ratio][\-rect][\-negChar][\-negColor][\-wX][\-hX]  image-name(s)
+.PP
+Number of hyphens nor case meter for switches.
+.SH DESCRIPTION
+Not exactly photo-viewer, but when in terminal, and need quick preview of (small) image(s) then it is best of its kind
+.PP
+It is strongly recommended to 'export COLUMNS LINES' to adapt correctly to your terminal
+.SH OPTIONS
+.TP
+\-h/--help
+print help and exits
+.TP
+\-best 
+overwrite everything and set best settngs
+.TP
+\-bestnchar
+same but sets nochar to true
+.TP
+\-fg
+use linux ansi escape color for character
+.TP
+\-bg 
+use linux ansi escape color for background
+.TP
+\-nochar
+disable shadowing by characters
+.TP
+\-names
+prints out image name before drawing it
+.TP
+\-ratio
+forece to keep image ratio
+.TP
+\-rect
+will force rendering assuming that console char is not square, but rectangle of 2w~=h
+.TP
+\-negChar
+invert chars
+.TP
+\-negColor
+invert colors
+.TP
+\-wX
+force width to width X ignoring exported COLUMNS
+.TP
+\-hX
+force height to height X ignoring exported LINES
+
+.SH EXAMPLES
+.TP
+No switch is considered as -best
+.B consoleImageViewer
+<image_name(s)>
+.TP
+same as
+.B consoleImageViewer
+-best <image_name(s)>
+.PP
+.TP
+Pretty good black and white (or any terminal default view)
+.B consoleImageViewer 
+\-ratio -rect  -negChar  <image_name(s)>
+.TP
+Overriding default or COLUMNS/ROWS by seize of 128 (-noChar is ignored because -best is used)
+.B consoleImageViewer
+\-best -noChar  -w128 -h128 <image_name(s)>
+.PP
+.SH EXIT STATUS
+consoleImageViewer returns zero unless itcrashes
+.SH AUTHOR
+Jiri Vanek (judovana (at) email.cz)
+.SH SEE ALSO
+dispaly(1)
